@@ -55,7 +55,7 @@ def get_metadata(urls):
             as_ = div.find_all('a')
             for a in as_:
                 dic[k + '_url'] = a['href']
-        if dic['Note'].startswith('RECORDED'):
+        if 'Vote' in dic:
             decisions = ['Yes', 'No', 'Abstentions', 'Non-voting', 'Total']
             votes = re.findall(r':(\s+\S+)', dic['Vote summary'])
             for i, vote in enumerate(votes):

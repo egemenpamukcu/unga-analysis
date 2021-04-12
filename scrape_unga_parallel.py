@@ -62,7 +62,7 @@ def get_metadata(urls):
             as_ = div.find_all('a')
             for a in as_:
                 dic[k + '_url'] = a['href']
-        if dic['Note'].startswith('RECORDED'):
+        if 'Vote' in dic:
             decisions = ['Yes', 'No', 'Abstentions', 'Non-voting', 'Total']
             votes = re.findall(r':(\s+\S+)', dic['Vote summary'])
             for i, vote in enumerate(votes):
@@ -96,14 +96,17 @@ def get_voting_data(metadata):
         datafields = soup.find_all('datafield', tag='967')
         for field in datafields:
             votes = {}
-            votes['Code'] = field.find_all('subfield', code='c')[0].text
-            votes['Country'] = field.find_all('subfield', code='e')[0].text
-            try:
-                votes['Vote'] = field.find_all('subfield', code='d')[0].text
-                voting_data[res['Resolution']].append(votes)
-            except IndexError:
-                voting_data[res['Resolution']].append(votes)
-                continue
+            codes = field.find_all('subfield', code='c'):
+            for code in codes:
+                votes['Code'] = code.text
+            countries = field.find_all('subfield', code='e')
+            for country in countries:
+                votes['Country'] = country.text
+            vs = field.find_all('subfield', code='d')
+            for v in vs:
+                votes['Vote'] = v.text
+            voting_data[res["Resolution"]].append(votes)
+
     return voting_data
 
 
@@ -125,12 +128,13 @@ def get_pdf_urls(metadata):
 
 
 #fetch and write URLs to a txt file
-#urls = get_resolution_urls(start_year=2021, end_year=2021)
-#with open('urls.txt', 'w') as outfile:
-#    json.dump(urls, outfile)
+urls = get_resolution_urls(start_year=2021, end_year=2021)
+with open('urls.txt', 'w') as outfile:
+    json.dump(urls, outfile)
 
 with open('urls.txt') as url_json:
     urls = json.load(url_json)
+
 
 n = math.ceil(len(urls) / size)
 partitions = [urls[i * n:(i + 1) * n] for i in range((len(urls) + n - 1) // n )]
