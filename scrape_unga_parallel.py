@@ -5,6 +5,14 @@ import bs4
 import re
 import pandas as pd
 import numpy as np
+import json
+from mpi4py import MPI
+import math
+
+comm = MPI.COMM_WORLD
+size = comm.Get_size()
+rank = comm.Get_rank()
+name = MPI.Get_processor_name()
 
 def get_resolution_urls(start_year=1946, end_year=2021):
     '''
@@ -54,7 +62,7 @@ def get_metadata(urls):
             as_ = div.find_all('a')
             for a in as_:
                 dic[k + '_url'] = a['href']
-        if dic['Note'] == 'RECORDED':
+        if dic['Note'].startswith('RECORDED'):
             decisions = ['Yes', 'No', 'Abstentions', 'Non-voting', 'Total']
             votes = re.findall(r':(\s+\S+)', dic['Vote summary'])
             for i, vote in enumerate(votes):
@@ -97,5 +105,49 @@ def get_voting_data(metadata):
                 voting_data[res['Resolution']].append(votes)
                 continue
     return voting_data
+
+
+def get_pdf_urls(metadata):
+    pdf_urls = {}
+    for res in metadata:
+        try:
+            req = requests.get(res['Resolution_url'].replace('?ln=en', '/export/xm'))
+        except KeyError:
+
+            continue
+        soup = bs4.BeautifulSoup(req.text, 'html.parser')
+        subfields = soup.find_all('subfield', code='u')
+        for sf in subfields:
+            if sf.text.endswith('-EN.pdf'):
+                pdf_urls[res['Resolution']] = sf.text
+                break
+    return pdf_urls
+
+
+#fetch and write URLs to a txt file
+#urls = get_resolution_urls(start_year=2021, end_year=2021)
+#with open('urls.txt', 'w') as outfile:
+#    json.dump(urls, outfile)
+
+with open('urls.txt') as url_json:
+    urls = json.load(url_json)
+
+n = math.ceil(len(urls) / size)
+partitions = [urls[i * n:(i + 1) * n] for i in range((len(urls) + n - 1) // n )]
+
+for i in range(size):
+    if rank == i:
+
+        metadata = get_metadata(partitions[i])
+        with open('metadata{}.txt'.format(i), 'w') as outfile:
+            json.dump(metadata, outfile)
+
+        voting_data = get_voting_data(metadata)
+        with open('voting_data{}.txt'.format(i), 'w') as outfile:
+            json.dump(voting_data, outfile)
+
+        pdf_urls = get_pdf_urls(metadata)
+        with open('pdf_urls{}.txt'.format(i), 'w') as outfile:
+            json.dump(pdf_urls, outfile)
 
 
