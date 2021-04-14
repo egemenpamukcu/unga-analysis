@@ -15,6 +15,14 @@ rank = comm.Get_rank()
 name = MPI.Get_processor_name()
 
 def create_corpus(pdf_urls):
+    '''
+    Iterates through URLs directing to UNGA Resolution PDFs, converts them to string,
+    and stores them in a DataFrame. The resulting DataFrame will be incomplete because
+    some of the PDFs have images of scanned documents instead of text. To get the text
+    of these resolutions through Tesseract Optical Character Recognition engine, run
+    complete_corpus_ocr.py using the output of this file as an input.
+    '''
+
     #pdf_urls = [[k, v] for k, v in all_pdfs.items()]
     for i, pdf_url in enumerate(pdf_urls):
         req = requests.get(pdf_url[1])
